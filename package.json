@@ -1,0 +1,219 @@
+{
+  "name": "hellobike-copilot",
+  "displayName": "Hellobike Copilot",
+  "description": "The AI Coding Copilot for Hellobike Developers",
+  "pricing": "Free",
+  "repository":"",
+  "publisher": "hellobike-copilot",
+  "keywords": [
+    "copilot",
+    "project",
+    "explorer",
+    "prompt",
+    "development",
+    "tools"
+  ],
+  "icon": "logo.png",
+  "version": "0.0.14",
+  "engines": {
+    "vscode": "^1.96.2"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:my-project-explorer-container",
+    "onStartupFinished",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:java",
+    "onLanguage:go"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "hello-copilot.helloWorld",
+        "title": "Hello World"
+      },
+      {
+        "command": "aegisUncovered.openFile",
+        "title": "Open File Location"
+      },
+      {
+        "command": "aegisUncovered.refresh",
+        "when": "view == aegisUncoveredMethodsView",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hello-copilot.utAction",
+        "title": "执行单测"
+      },
+      {
+        "command": "myProjectExplorer.refresh",
+        "title": "刷新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "myProjectExplorer.selectParam",
+        "title": "选择参数",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "hello-copilot.sonarAction",
+        "title": "sonar上报"
+      },
+      {
+        "command": "promptGroups.refresh",
+        "title": "刷新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "promptGroups.showPrompt",
+        "title": "显示 Prompt 内容"
+      },
+      {
+        "command": "promptGroups.updateToRules",
+        "title": "更新到 Rules 文件"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "hello-copilot.helloWorld",
+        "key": "ctrl+f10",
+        "mac": "cmd+f10",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorFocus",
+          "command": "hello-copilot.helloWorld",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "hello-copilot.utAction",
+          "group": "1_modification",
+          "when": "isMavenProject"
+        },
+        {
+          "command": "hello-copilot.sonarAction",
+          "group": "1_modification",
+          "when": "isMavenProject"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "myProjectExplorer.refresh",
+          "when": "view == myProjectExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "myProjectExplorer.selectParam",
+          "when": "view == myProjectExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "promptGroups.refresh",
+          "when": "view == promptGroups",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "promptGroups.updateToRules",
+          "when": "view == promptGroups && viewItem == promptWithUpdate",
+          "group": "inline"
+        }
+      ]
+    },
+    "commandPalette": [
+      {
+        "command": "hello-copilot.openTerminal",
+        "when": "true"
+      },
+      {
+        "command": "hello-copilot.sonarAction",
+        "when": "true"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "my-project-explorer-container",
+          "title": "My Project",
+          "icon": "$(folder-active)"
+        },
+        {
+          "id": "prompt-groups-container",
+          "title": "AI Prompt Groups",
+          "icon": "$(symbol-text)"
+        }
+      ]
+    },
+    "views": {
+      "my-project-explorer-container": [
+        {
+          "id": "myProjectExplorer",
+          "name": "My Files",
+          "type": "tree"
+        }
+      ],
+      "prompt-groups-container": [
+        {
+          "id": "promptGroups",
+          "name": "Prompt Groups",
+          "type": "tree"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "HCopilot Extension",
+      "properties": {
+        "HCopilot.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Hello Developer Copilot"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.96.2",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.8.3",
+    "webpack": "^5.99.7",
+    "webpack-cli": "^6.0.1",
+    "webpack-obfuscator": "^3.5.1"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "axios": "^1.9.0",
+    "bufferutil": "^4.0.9",
+    "utf-8-validate": "^6.0.5",
+    "ws": "^8.18.2"
+  }
+}
