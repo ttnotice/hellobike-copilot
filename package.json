@@ -3,7 +3,7 @@
   "displayName": "Hellobike Copilot",
   "description": "The AI Coding Copilot for Hellobike Developers",
   "pricing": "Free",
-  "repository":"",
+  "repository":"https://github.com/ttnotice/hellobike-copilot",
   "publisher": "hellobike-copilot",
   "keywords": [
     "copilot",
