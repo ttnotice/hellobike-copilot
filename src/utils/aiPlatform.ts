@@ -50,7 +50,6 @@ function getMockPromptGroupsData() {
         "description": "大前端ai项目",
         "type": "normal",
         "creator": "梅瑞珂",
-        "creatorEmail": "meiruike750@hellobike.com",
         "createTime": "2025-08-29T08:12:30.344Z",
         "updateTime": "2025-09-03T03:07:15.248Z",
         "promptList": [

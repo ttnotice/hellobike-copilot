@@ -20,8 +20,6 @@ export interface RuleDetail {
   business: string;
   /** 是否删除 */
   isDelete: boolean;
-  /** 创建者邮箱 */
-  creatorEmail: string;
   /** 描述 */
   description: string;
   /** 更新时间 */
@@ -36,8 +34,6 @@ export interface RuleDetail {
   content: string;
   /** 更新者 */
   updater: string;
-  /** 更新者邮箱 */
-  updaterEmail: string;
   /** 应用的文件匹配模式 */
   applyGlobs: string[];
   /** 应用方式 */
