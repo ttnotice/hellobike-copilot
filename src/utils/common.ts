@@ -26,12 +26,12 @@ export const getGitUserConfig = async () => {
       throw new Error("Git extension not found");
     }
 
-    const gitExtension =extension.exports
+    extension.activate();
 
     return { name: 'git-user-wa-web-service', email: 'git-user-wa-web-service@hellobike.com' };
   } catch (error) {
     logChannel.error("Failed to get Git config:", error);
-    return { name: undefined, email: undefined };
+    return { name: 'tt_ee_team', email: 'tt_ee_team@hellobike.com' };
   }
 };
 
