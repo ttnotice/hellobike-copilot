@@ -5,9 +5,8 @@ import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { getConfig, reportActivity } from "./codeGuard";
+import { getConfig } from "./codeGuard";
 import {
-  AEGIS_WEB_URL,
   CURSOR_RULES_DIR,
   DINGTALK_CLIENT_ID,
   HAS_LOGIN_KEY,
@@ -27,43 +26,11 @@ export const getGitUserConfig = async () => {
       throw new Error("Git extension not found");
     }
 
-    const gitExtension = extension.isActive
-      ? extension.exports
-      : await extension.activate();
-    const git = gitExtension.getAPI(1);
+    const gitExtension =extension.exports
 
-    // 获取第一个仓库（如果有多个仓库，需要遍历）
-    const repository = git.repositories[0];
-    if (!repository) {
-      throw new Error("No Git repository found");
-    }
-
-    // 获取配置
-    const name = await repository.getConfig("user.name");
-    const email = await repository.getConfig("user.email");
-
-    return { name, email };
+    return { name: 'git-user-wa-web-service', email: 'git-user-wa-web-service@hellobike.com' };
   } catch (error) {
     logChannel.error("Failed to get Git config:", error);
-    return { name: undefined, email: undefined };
-  }
-};
-
-export const getGitUserConfigFromCommand = async () => {
-  try {
-    // 获取用户名
-    const name = childProcess
-      .execSync("git config --global user.name")
-      .toString()
-      .trim();
-    // 获取邮箱
-    const email = childProcess
-      .execSync("git config --global user.email")
-      .toString()
-      .trim();
-    return { name, email };
-  } catch (error) {
-    logChannel.error("Failed to execute Git command:", error);
     return { name: undefined, email: undefined };
   }
 };
@@ -101,54 +68,6 @@ export const getPluginInfo = async () => {
     logChannel.info(`插件版本: ${extensionVersion}`);
     return extension.packageJSON;
   }
-};
-
-export const getGitInfo = async (workspacePath: string) => {
-  let remote = "",
-    branch = null,
-    hash = null;
-  try {
-    remote = childProcess
-      .execSync("git config --get remote.origin.url", { cwd: workspacePath })
-      .toString()
-      .trim();
-  } catch (e) {
-    // 忽略错误
-  }
-
-  try {
-    branch = childProcess
-      .execSync("git rev-parse --abbrev-ref HEAD", { cwd: workspacePath })
-      .toString()
-      .trim();
-  } catch (e) {
-    // 忽略错误
-  }
-
-  try {
-    hash = childProcess
-      .execSync("git rev-parse HEAD", { cwd: workspacePath })
-      .toString()
-      .trim();
-  } catch (e) {
-    // 忽略错误
-  }
-
-  return { remote: normalizeRemoteUrl(remote), branch, hash };
-};
-
-
-// 1. ssh://git@gitlab.hellobike.cn:10022/CoolTest/AppCooltestApiReplayWeb.git 
-// 2. https://gitlab.hellobike.cn/fund/AppFinancePaymentService
-// 有些人的git返回remote是第二种格式，统一处理成第一种格式，后端用的是第一种格式
-const normalizeRemoteUrl = (remote: string): string => {
-  if (remote.startsWith("https://gitlab.hellobike.cn")) {
-    remote = remote.replace("https://gitlab.hellobike.cn", "ssh://git@gitlab.hellobike.cn:10022");
-    if (!remote.endsWith(".git")) {
-      remote = remote + ".git";
-    }
-  }
-  return remote;
 };
 
 export const getProjectPath = (): string => {
@@ -424,28 +343,9 @@ export const ensureFileExists = async (
 }> => {
   try {
     // 检查文件是否已存在
-    const fileExists = fs.existsSync(filePath);
     logChannel.info(
       `filePath: ${filePath} createDirectory: ${createDirectory} content: ${content} append: ${append}`
     );
-    if (fileExists && !append) {
-      logChannel.info(`文件已存在: ${filePath}`);
-      return {
-        success: true,
-        message: `文件已存在: ${filePath}`,
-        existed: true,
-      };
-    }
-
-    if (!fileExists && append) {
-      logChannel.error(`文件不存在: ${filePath}`);
-      return {
-        success: true,
-        message: `文件不存在: ${filePath}`,
-        existed: true,
-      };
-    }
-
     // 如果需要创建目录
     if (createDirectory) {
       const dirPath = path.dirname(filePath);
@@ -461,7 +361,7 @@ export const ensureFileExists = async (
 
     // 写入或追加文件内容
     try {
-      if (append && fileExists) {
+      if (append) {
         // 追加模式：文件已存在，追加内容到文件尾部
         fs.appendFileSync(filePath, content, "utf8");
         logChannel.info(
@@ -477,13 +377,13 @@ export const ensureFileExists = async (
         fs.writeFileSync(filePath, content, "utf8");
         logChannel.info(
           `文件已${
-            fileExists ? "覆盖" : "创建"
+            "创建"
           }: ${filePath} content: ${content} append: ${append}`
         );
         return {
           success: true,
-          message: `文件已${fileExists ? "覆盖" : "创建"}: ${filePath}`,
-          existed: fileExists,
+          message: `文件已"创建": ${filePath}`,
+          existed: false,
         };
       }
     } catch (writeError) {
@@ -491,7 +391,7 @@ export const ensureFileExists = async (
       return {
         success: false,
         message: `写入文件失败: ${filePath} - ${writeError}`,
-        existed: fileExists,
+        existed: false,
       };
     }
   } catch (error) {
@@ -1226,461 +1126,6 @@ export const checkLogIn = (context: vscode.ExtensionContext): string => {
   return context.globalState.get(HAS_LOGIN_KEY, "1");
 };
 
-export const popLogin = async (context: vscode.ExtensionContext) => {
-  try {
-    logChannel.info("显示 login 弹窗");
-
-    // wait一会，确保弹窗能正确显示
-    await new Promise(resolve => setTimeout(resolve, 100));
-    const result = await vscode.window.showInformationMessage(
-      `当前用户未登录, 请登录后使用`,
-      { modal: false },
-      "登录"
-    );
-    logChannel.info("弹窗结果:", result);
-
-    if (result === "登录") {
-      context.globalState.update(HAS_LOGIN_KEY, "2_" + Date.now());
-      childProcess.exec(
-        `open "https://login.dingtalk.com/oauth2/auth?redirect_uri=${encodeURIComponent(
-          AEGIS_WEB_URL
-        )}%2fauth%3fsource=${getEditorTypeCode()}&response_type=code&client_id=${DINGTALK_CLIENT_ID}&scope=openid+corpid&state=dddd&prompt=consent"`
-      );
-    }
-  } catch (error) {
-    console.error("执行登录时发生错误:", error);
-    logChannel.error("执行登录时发生错误:", error);
-  }
-};
-
-/**
- * 执行规则更新：接收后端推送的规则数据，写入到项目的.cursor/rules目录
- * 
- * 业务流程：
- * 1. 从WebSocket消息中接收规则数据（receivedData），包含规则列表、下发路径、扩展名等
- * 2. 弹出提示框询问用户是否更新
- * 3. 删除旧规则文件（对比上次下发的规则列表，找出已移除的规则）
- * 4. 写入新规则文件到指定目录（如.cursor/rules），文件名格式：规则名称+扩展名（如.mdc）
- * 5. 发送确认消息给后端，更新下发状态
- * 
- * @param receivedData 规则数据对象，包含：
- *   - key: 下发记录ID
- *   - groupName: 领域名称
- *   - detail: 规则详细内容列表（包含name和content）
- *   - directory: 下发路径（如".cursor/rules"）
- *   - extension: 文件扩展名（如".mdc"）
- *   - platform: 平台类型（"cursor"或"kiro"）
- *   - deletePromptList: 需要删除的旧规则名称列表
- *   - deletePromptExtension: 删除文件时使用的扩展名
- *   - deleteDirectory: 删除文件时使用的目录
- */
-export const executeUpdate = async (
-  receivedData: any,
-  context: vscode.ExtensionContext,
-  ws: any
-) => {
-  try {
-    let email;
-    try {
-      let gitInfo = await getGitUserConfig();
-      logChannel.info("gitInfo", gitInfo);
-
-      if (!gitInfo.email) {
-        gitInfo = await getGitUserConfigFromCommand();
-      } else {
-        email = gitInfo.email;
-      }
-      if (!gitInfo.email) {
-        return;
-      } else {
-        email = gitInfo.email;
-      }
-      logChannel.info("gitInfo2", gitInfo);
-    } catch (error) {
-      logChannel.error("email is null");
-      return;
-    }
-    logChannel.info("显示 type 3 弹窗");
-    logChannel.info("显示 type 3 弹窗 ReceivedUpdateData:", receivedData);
-    let distributeKey = "distribute_" + receivedData.key;
-    const pop = checkDistributePop(distributeKey, context);
-    logChannel.info("显示 type 3 弹窗 pop:", pop);
-    logChannel.info(
-      "弹窗内容:",
-      `${receivedData.groupName}: 有${receivedData.detail.length}条规则发布了新版本`
-    );
-    if (!pop) {
-      return;
-    }
-    const workspacePath =
-      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
-    const gitInfo = await getGitInfo(workspacePath);
-
-    // 添加延迟确保弹窗能正确显示
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // 弹出提示框，询问用户是否更新规则
-    const result = await vscode.window.showInformationMessage(
-      `${receivedData.groupName}: 有${receivedData.detail.length}条规则发布了新版本`,
-      { modal: false },
-      "更新"
-    );
-    // if (result === "取消") {
-    //   ws.send(
-    //     '{"key":"' +
-    //       receivedData.key +
-    //       '","email":"' +
-    //       email +
-    //       '","gitUrl":"' +
-    //       gitInfo.remote +
-    //       '","type":' +
-    //       receivedData.type +
-    //       ',"status":3,"source":' +
-    //       getEditorTypeCode() +
-    //       "}"
-    //   );
-    //   return;
-    // }
-    logChannel.info("弹窗结果:", result);
-
-    if (result === "更新") {
-      // 用户确认更新，开始处理规则文件
-      context.globalState.update(distributeKey, "2_" + Date.now());
-      // 确定文件扩展名：优先使用下发配置，否则根据平台自动判断（cursor=.mdc, kiro=.md）
-      const ruleExtension = receivedData.extension
-        ? receivedData.extension
-        : receivedData.platform === "kiro"
-        ? ".md"
-        : receivedData.platform === "cursor"
-        ? ".mdc"
-        : getEditorTypeCode() === 2
-        ? ".mdc"
-        : ".md";
-
-      // 确定删除文件时使用的扩展名（可能和当前扩展名不同，因为可能修改了扩展名配置）
-      const deletePromptExtension = receivedData.deletePromptExtension
-        ? receivedData.deletePromptExtension
-        : receivedData.platform === "kiro"
-        ? ".md"
-        : receivedData.platform === "cursor"
-        ? ".mdc"
-        : getEditorTypeCode() === 2
-        ? ".mdc"
-        : ".md";
-
-      // 确定删除文件时使用的目录（可能和当前目录不同）
-      const deleteDirectory =
-        getProjectPath() +
-        "/" +
-        (receivedData.deleteDirectory
-          ? receivedData.deleteDirectory
-          : receivedData.platform === "kiro"
-          ? ".kiro"
-          : receivedData.platform === "cursor"
-          ? ".cursor"
-          : "");
-
-      logChannel.info(
-        "ruleExtension:",
-        ruleExtension,
-        "deletePromptExtension:",
-        deletePromptExtension
-      );
-      // 确定规则文件保存路径：优先使用下发配置的directory，否则使用默认路径
-      const rulePathBase =
-        getProjectPath() +
-        "/" +
-        (getEditorTypeCode() === 2 ? CURSOR_RULES_DIR : KIRO_RULES_DIR);
-      await ensureDirectoryExists(rulePathBase);
-      let rulePath = receivedData.directory
-        ? receivedData.directory.endsWith("/")
-          ? getProjectPath() + "/" + receivedData.directory
-          : getProjectPath() + "/" + receivedData.directory + "/"
-        : rulePathBase;
-      // 删除已移除的旧规则文件（对比上次下发的规则列表）
-      for (const item of receivedData.deletePromptList) {
-        logChannel.info(
-          "rulePathBase:",
-          rulePathBase,
-          "rulePath:",
-          rulePath,
-          "deletePromptList:",
-          receivedData.deletePromptList,
-          "deleteDirectory",
-          receivedData.deleteDirectory
-        );
-        const tsFiles = await findFilesByRegex(
-          rulePath,
-          new RegExp(`${item}${deletePromptExtension}$`),
-          true
-        );
-        logChannel.info("deletePromptList tsFiles:", tsFiles);
-
-        // 删除匹配到的旧文件
-        for (const filePath of tsFiles) {
-          try {
-            await vscode.workspace.fs.delete(vscode.Uri.file(filePath));
-            logChannel.info(`已删除旧文件: ${filePath}`);
-          } catch (error) {
-            logChannel.error(`删除文件失败: ${filePath}`, error);
-          }
-        }
-      }
-
-      // 处理每个规则：删除旧文件，写入新文件
-      for (const item of receivedData.detail) {
-        logChannel.info(
-          "rulePathBase:",
-          rulePathBase,
-          "rulePath:",
-          rulePath,
-          "item:",
-          item
-        );
-        // 在删除目录中查找同名旧文件（可能扩展名不同）
-        const tsFiles = await findFilesByRegex(
-          deleteDirectory,
-          new RegExp(`${item.name}${deletePromptExtension}$`),
-          true
-        );
-        logChannel.info(item.name, "tsFiles:", tsFiles);
-
-        // 删除匹配到的旧文件
-        for (const filePath of tsFiles) {
-          try {
-            await vscode.workspace.fs.delete(vscode.Uri.file(filePath));
-            logChannel.info(`已删除旧文件: ${filePath}`);
-          } catch (error) {
-            logChannel.error(`删除文件失败: ${filePath}`, error);
-          }
-        }
-
-        // 在当前规则目录中查找同名文件（可能扩展名不同，需要删除后重新写入）
-        const tsFilesNew = await findFilesByRegex(
-          getProjectPath() +
-            "/" +
-            (getEditorTypeCode() === 2 ? ".cursor" : ".kiro"),
-          new RegExp(`${item.name}.*\\${ruleExtension}$`),
-          true
-        );
-        logChannel.info(item.name, "tsFilesNew:", tsFilesNew);
-
-        for (const filePath of tsFilesNew) {
-          try {
-            await vscode.workspace.fs.delete(vscode.Uri.file(filePath));
-            logChannel.info(`已删除旧文件: ${filePath}`);
-          } catch (error) {
-            logChannel.error(`删除文件失败: ${filePath}`, error);
-          }
-        }
-        logChannel.info(
-          `platform: ${receivedData.platform} cursor applyWay:`,
-          item.applyWay
-        );
-        // 写入新规则文件：文件名=规则名称+扩展名，内容=规则内容
-        if (receivedData.platform === "cursor") {
-          // logChannel.info(`platform: cursor applyWay:`, item.applyWay);
-          // if (item.applyWay) {
-          //   await ensureFileExists(
-          //     rulePath + item.name + ruleExtension,
-          //     true,
-          //     "---\n" + item.applyWay + "\n---\n",
-          //     false
-          //   );
-          // }
-          await ensureFileExists(
-            rulePath + item.name + ruleExtension,
-            true,
-            item.content,
-            false
-          );
-        } else {
-          await ensureFileExists(
-            rulePath + item.name + ruleExtension,
-            true,
-            item.content,
-            false
-          );
-        }
-      }
-      reportActivity(15, receivedData);
-      // 验证所有文件是否写入成功
-      let isSuccess = true;
-      for (const item of receivedData.detail) {
-        const result = await ensureFileExists(
-          rulePath + item.name + ruleExtension
-        );
-        isSuccess = isSuccess && result.success;
-        logChannel.info(item.name, "isSuccess:", isSuccess);
-      }
-      if (isSuccess) {
-        // 所有文件写入成功，发送确认消息给后端，更新下发状态为成功（status=1）
-        deleteDistributeKey(distributeKey, context);
-        ws.send(
-          '{"key":"' +
-            receivedData.key +
-            '","email":"' +
-            email +
-            '","gitUrl":"' +
-            gitInfo.remote +
-            '","type":' +
-            receivedData.type +
-            ',"status":1,"source":' +
-            getEditorTypeCode() +
-            "}"
-        );
-      }
-    }
-  } catch (error) {
-    console.error("执行更新时发生错误:", error);
-    logChannel.error("执行更新时发生错误:", error);
-  }
-};
-
-/**
- * 执行规则删除：接收后端推送的领域删除通知，删除本地规则文件
- * 
- * 业务流程：
- * 1. 从WebSocket消息中接收删除通知（receivedData），包含要删除的规则名称列表
- * 2. 弹出提示框询问用户是否删除本地文件
- * 3. 在指定目录中查找并删除匹配的规则文件
- * 4. 发送确认消息给后端，更新删除状态
- * 
- * @param receivedData 删除数据对象，包含：
- *   - key: 领域ID（groupId）
- *   - groupName: 领域名称
- *   - detail: 要删除的规则名称列表（JSON字符串）
- *   - directory: 规则文件所在目录
- *   - extension: 文件扩展名
- *   - platform: 平台类型
- */
-export const executeDelete = async (
-  receivedData: any,
-  context: vscode.ExtensionContext,
-  ws: any
-) => {
-  try {
-    let email;
-    try {
-      let gitInfo = await getGitUserConfig();
-      logChannel.info("gitInfo", gitInfo);
-
-      if (!gitInfo.email) {
-        gitInfo = await getGitUserConfigFromCommand();
-      } else {
-        email = gitInfo.email;
-      }
-      if (!gitInfo.email) {
-        return;
-      } else {
-        email = gitInfo.email;
-      }
-      logChannel.info("gitInfo2", gitInfo);
-    } catch (error) {
-      logChannel.error("email is null");
-      return;
-    }
-    // 确定文件扩展名
-    const ruleExtension = receivedData.extension
-      ? receivedData.extension
-      : receivedData.platform === "kiro"
-      ? ".md"
-      : receivedData.platform === "cursor"
-      ? ".mdc"
-      : getEditorTypeCode() === 2
-      ? ".mdc"
-      : ".md";
-    const workspacePath =
-      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
-    const gitInfo = await getGitInfo(workspacePath);
-    logChannel.info("Received data24 executeDelete 开始执行");
-    logChannel.info(
-      "Received data24 executeDelete receivedData:",
-      JSON.stringify(receivedData)
-    );
-
-    let distributeKey = "distribute_" + receivedData.key;
-    const pop = checkDistributePop(distributeKey, context);
-    logChannel.info("Received data24 executeDelete pop:", pop);
-    if (!pop) {
-      return;
-    }
-    // 弹出提示框，询问用户是否删除本地规则文件
-    const result = await vscode.window.showInformationMessage(
-      `${receivedData.groupName}已删除, 是否删除本地文件?`,
-      { modal: false },
-      "是"
-    );
-    logChannel.info("Received data24 executeDelete result:", result);
-    // if (result === "否") {
-    //   ws.send(
-    //     '{"key":"' +
-    //       receivedData.key +
-    //       '","email":"' +
-    //       email +
-    //       '","gitUrl":"' +
-    //       gitInfo.remote +
-    //       '","type":' +
-    //       receivedData.type +
-    //       ',"status":3,"source":' +
-    //       getEditorTypeCode() +
-    //       "}"
-    //   );
-    //   return;
-    // }
-    if (result === "是") {
-      // 用户确认删除，开始删除本地规则文件
-      context.globalState.update(distributeKey, "2_" + Date.now());
-      // 遍历要删除的规则名称列表
-      JSON.parse(receivedData.detail).forEach(async (item: any) => {
-        // 在规则目录中查找匹配的规则文件（支持不同扩展名）
-        const tsFilesDelete = await findFilesByRegex(
-          getProjectPath() +
-            "/" +
-            (receivedData.directory
-              ? receivedData.directory
-              : getEditorTypeCode() === 2
-              ? ".cursor"
-              : ".kiro"),
-          new RegExp(`${item}.*\\${ruleExtension}$`),
-          true
-        );
-        logChannel.info(
-          "Received data24 executeDelete tsFilesDelete:",
-          tsFilesDelete
-        );
-        // 删除找到的文件
-        for (const filePath of tsFilesDelete) {
-          try {
-            await vscode.workspace.fs.delete(vscode.Uri.file(filePath));
-            logChannel.info(`已删除旧文件: ${filePath}`);
-          } catch (error) {
-            logChannel.error(`删除文件失败: ${filePath}`, error);
-          }
-        }
-      });
-      deleteDistributeKey(distributeKey, context);
-      // 发送确认消息给后端，更新删除状态（status=2表示删除成功，action=17表示删除操作）
-      ws.send(
-        '{"key":"' +
-          receivedData.key +
-          '","email":"' +
-          email +
-          '","gitUrl":"' +
-          gitInfo.remote +
-          '","type":' +
-          receivedData.type +
-          ',"status":2,"action":17,"source":' +
-          getEditorTypeCode() +
-          "}"
-      );
-    }
-    reportActivity(17, receivedData);
-  } catch (error) {
-    logChannel.error("executeDelete 执行时发生错误:", error);
-    console.error("executeDelete 执行时发生错误:", error);
-  }
-};
 
 export const checkDistributePop = (
   distributeKey: string,

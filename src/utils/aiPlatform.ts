@@ -1,11 +1,8 @@
 import axios, { AxiosInstance } from "axios";
 import { AIPLATFROM_PROMPT_URL } from "./constants";
 import {
-  getGitUserConfigFromCommand,
   getPluginInfo,
-  getGitInfo,
 } from "./common";
-import { getCursorUserInfo, showCursorUserInfo, getUserInfoForLog } from "./cursorUser";
 import * as vscode from "vscode";
 
 const config = {
@@ -25,75 +22,6 @@ const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
 const logChannel = vscode.window.createOutputChannel("Hello Copilot", {
   log: true,
 });
-
-export const getUserPromptGroups = async (filterType?: string) => {
-  let gitInfo = await getGitInfo(workspacePath);
-  let gitUserInfo = await getGitUserConfigFromCommand();
-  let pluginInfo = await getPluginInfo();
-  logChannel.info("pluginInfo", pluginInfo);
-
-  const userInfo = await getCursorUserInfo();
-  logChannel.info("userInfo", userInfo);
-  if (
-    gitInfo.remote &&
-    gitUserInfo.email &&
-    repoRegex.test(gitInfo.remote) &&
-    !userRegex.test(gitUserInfo.email)
-  ) {
-    vscode.window.showInformationMessage(
-      `Git user: ${gitUserInfo.email}为非hello邮箱, 请检查后重新配置!`
-    );
-  }
-
-  // 构建请求数据，使用用户的邮箱
-  const payload =gitInfo.remote? {
-    email: gitUserInfo.email || userInfo.email,
-    git: [gitInfo.remote],
-  }: {
-    email: gitUserInfo.email || userInfo.email ,
-  };
-  
-  logChannel.info("getUserPromptGroups payload", payload);
-  
-  try {
-    const response = await axios.post(AIPLATFROM_PROMPT_URL, payload, config);
-    if (response.status === 200) {
-      logChannel.info("getUserPromptGroups responseData:", response.data);
-      
-      // 处理响应数据，确保返回正确的格式
-      const responseData = response.data;
-      
-      // 如果响应有 data 字段，使用 data 字段
-      let data = responseData && responseData.data ? responseData.data : responseData;
-      
-      // 如果指定了筛选类型，则筛选数据
-      if (filterType && data) {
-        data = filterPromptGroupsByType(data, filterType);
-        logChannel.info(`筛选 type="${filterType}" 后的数据:`, data);
-      }
-      
-      return data;
-    } else {
-      logChannel.error("getUserPromptGroups failed:", response.status, response.data);
-      return null;
-    }
-  } catch (e: any) {
-    logChannel.error("getUserPromptGroups failed:", e.message);
-    
-    // 如果是网络错误，返回模拟数据用于测试
-    if (e.code === 'ECONNREFUSED' || e.code === 'ENOTFOUND' || e.response?.status >= 500) {
-      logChannel.warn("网络连接失败，返回模拟数据用于测试");
-      const mockData = getMockPromptGroupsData();
-      // 如果指定了筛选类型，则筛选模拟数据
-      if (filterType) {
-        return filterPromptGroupsByType(mockData, filterType);
-      }
-      return mockData;
-    }
-    
-    return null;
-  }
-};
 
 // 筛选 Prompt Groups 数据根据 type 字段
 function filterPromptGroupsByType(data: any, filterType: string): any {

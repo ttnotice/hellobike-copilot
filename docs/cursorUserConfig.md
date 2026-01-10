@@ -132,14 +132,6 @@ git config user.email "your.email@example.com"
 5. **系统用户信息** - 作为最后的备选方案
 
 ## 使用示例
-
-### 基本使用
-```typescript
-import { getCursorUserInfo } from './utils/cursorUser';
-
-// 获取用户信息
-const userInfo = await getCursorUserInfo();
-
 if (userInfo.isLoggedIn) {
   console.log(`欢迎, ${userInfo.account}!`);
   console.log(`邮箱: ${userInfo.email}`);
@@ -149,29 +141,15 @@ if (userInfo.isLoggedIn) {
 }
 ```
 
-### 显示用户信息
-```typescript
-import { showCursorUserInfo } from './utils/cursorUser';
-
-// 显示用户信息弹窗
-await showCursorUserInfo();
-```
-
 ### 日志记录
 ```typescript
-import { getUserInfoForLog } from './utils/cursorUser';
 
 // 获取日志格式的用户信息
-const logInfo = getUserInfoForLog();
 console.log(`[${new Date().toISOString()}] ${logInfo}`);
 ```
 
 ### 获取所有信息源
 ```typescript
-import { getAllUserInfoSources } from './utils/cursorUser';
-
-// 获取所有可用的信息源
-const allSources = await getAllUserInfoSources();
 
 for (const [sourceName, userInfo] of Object.entries(allSources)) {
   console.log(`${sourceName}: ${userInfo.isLoggedIn ? '已登录' : '未登录'}`);
